@@ -10,7 +10,7 @@ class User(Base):
     username = Column(String(100), nullable=False)
     email = Column(String(120), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
-    role = Column(String(50), default="staff")
+    role = Column(String(50), nullable=False )
     created_at = Column(DateTime, default=datetime.utcnow)
 
     def to_dict(self):
@@ -46,29 +46,6 @@ class Location(Base):
     def to_dict(self):
         return {"id": self.id, "name": self.name, "address": self.address}
 
-class Movement(Base):
-    __tablename__ = "movements"
-
-    id = Column(Integer, primary_key=True)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
-    movement_type = Column(String(20), nullable=False)
-    quantity = Column(Integer, nullable=False)
-    from_location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
-    to_location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "product_id": self.product_id,
-            "movement_type": self.movement_type,
-            "quantity": self.quantity,
-            "from_location_id": self.from_location_id,
-            "to_location_id": self.to_location_id,
-            "user_id": self.user_id,
-            "created_at": self.created_at
-        }
 
 class Stock(Base):
     __tablename__ = "stocks"
@@ -76,7 +53,7 @@ class Stock(Base):
     id = Column(Integer, primary_key=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=False)
-    quantity = Column(Integer, default=0, nullable=False)
+    quantity = Column(Integer, default=0)
 
     def to_dict(self):
         return {
@@ -84,6 +61,31 @@ class Stock(Base):
             "product_id": self.product_id,
             "location_id": self.location_id,
             "quantity": self.quantity
+        }
+
+
+class Movement(Base):
+    __tablename__ = "movements"
+
+    id = Column(Integer, primary_key=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    from_location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
+    to_location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
+    quantity = Column(Integer, nullable=False)
+    movement_type = Column(String(20), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "product_id": self.product_id,
+            "from_location_id": self.from_location_id,
+            "to_location_id": self.to_location_id,
+            "quantity": self.quantity,
+            "movement_type": self.movement_type,
+            "user_id": self.user_id,
+            "created_at": self.created_at
         }
 class AuditLog(Base):
     __tablename__ = "audit_logs"

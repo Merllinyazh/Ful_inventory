@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from config import SessionLocal
-from services.stockservices import StockService, StockCreate
 from routes.auth import get_current_user
+from services.stockservices import StockService
 
-router = APIRouter(prefix="/stocks", tags=["Stock Management"])
+router = APIRouter(prefix="/stock", tags=["Stock"])
 
 
 def get_db():
@@ -16,28 +16,18 @@ def get_db():
         db.close()
 
 
-@router.post("/")
-def add_stock(
-    data: StockCreate,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    return StockService.add_stock(data, db)
-
-
 @router.get("/")
-def get_stocks(
+def get_stock(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    return StockService.get_stocks(db)
+    return StockService.get_all_stock(db)
 
 
-@router.get("/{product_id}/{location_id}")
-def get_stock(
-    product_id: int,
+@router.get("/location/{location_id}")
+def get_location_stock(
     location_id: int,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    return StockService.get_stock(product_id, location_id, db)
+    return StockService.get_stock_by_location(location_id, db)

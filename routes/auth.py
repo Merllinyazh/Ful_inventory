@@ -32,6 +32,16 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
+def admin_required(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
+
+    return current_user
+
+
 @router.post("/register", status_code=201)
 def register(data: RegisterUser, db: Session = Depends(get_db)):
     return AuthService.register_user(data, db)
@@ -47,4 +57,11 @@ def protected(current_user: dict = Depends(get_current_user)):
     return {
         "message": f"Welcome back, {current_user['username']}!",
         "user": current_user
+    }
+
+
+@router.get("/admin")
+def admin_only(current_user: dict = Depends(admin_required)):
+    return {
+        "message": f"Welcome Admin {current_user['username']}!"
     }

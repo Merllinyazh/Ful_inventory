@@ -1,6 +1,7 @@
 from fastapi import HTTPException
 from pydantic import BaseModel
 from models.database import Product
+from services.auditservices import AuditService
 
 
 class ProductCreate(BaseModel):
@@ -13,7 +14,7 @@ class ProductCreate(BaseModel):
 class ProductService:
 
     @staticmethod
-    def create_product(data, db):
+    def create_product(data, current_user, db):
         if db.query(Product).filter(Product.sku == data.sku).first():
             raise HTTPException(status_code=409, detail="SKU already exists")
 
@@ -28,15 +29,24 @@ class ProductService:
         db.commit()
         db.refresh(product)
 
+        AuditService.create_log(
+            current_user["user_id"],
+            "CREATE_PRODUCT",
+            f"Product '{product.name}' created",
+            db
+        )
+
         return {
             "message": "Product created successfully",
             "product": product.to_dict()
         }
 
+
     @staticmethod
     def get_products(db):
         products = db.query(Product).all()
         return [product.to_dict() for product in products]
+
 
     @staticmethod
     def get_product(product_id, db):
@@ -47,8 +57,9 @@ class ProductService:
 
         return product.to_dict()
 
+
     @staticmethod
-    def update_product(product_id, data, db):
+    def update_product(product_id, data, current_user, db):
         product = db.query(Product).filter(Product.id == product_id).first()
 
         if not product:
@@ -62,17 +73,34 @@ class ProductService:
         db.commit()
         db.refresh(product)
 
+        AuditService.create_log(
+            current_user["user_id"],
+            "UPDATE",
+            "PRODUCT",
+            product.id,
+            db
+        )
+
         return {
             "message": "Product updated successfully",
             "product": product.to_dict()
         }
 
+
     @staticmethod
-    def delete_product(product_id, db):
+    def delete_product(product_id, current_user, db):
         product = db.query(Product).filter(Product.id == product_id).first()
 
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
+
+        AuditService.create_log(
+            current_user["user_id"],
+            "DELETE",
+            "PRODUCT",
+            product.id,
+            db
+        )
 
         db.delete(product)
         db.commit()
