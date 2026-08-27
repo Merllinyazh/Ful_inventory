@@ -85,3 +85,20 @@ class Stock(Base):
             "location_id": self.location_id,
             "quantity": self.quantity
         }
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, nullable=False)
+    action = Column(String(100), nullable=False)
+    details = Column(String(255))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "action": self.action,
+            "details": self.details,
+            "created_at": self.created_at
+        }
