@@ -60,10 +60,28 @@ class ProductService:
 
     @staticmethod
     def update_product(product_id, data, current_user, db):
-        product = db.query(Product).filter(Product.id == product_id).first()
+
+        product = db.query(Product).filter(
+            Product.id == product_id
+        ).first()
 
         if not product:
-            raise HTTPException(status_code=404, detail="Product not found")
+            raise HTTPException(
+                status_code=404,
+                detail="Product not found"
+            )
+
+    # Check if another product already uses this SKU
+        existing_product = db.query(Product).filter(
+            Product.sku == data.sku,
+            Product.id != product_id
+        ).first()
+
+        if existing_product:
+            raise HTTPException(
+                status_code=409,
+                detail="SKU already exists"
+            )
 
         product.name = data.name
         product.sku = data.sku
@@ -73,11 +91,11 @@ class ProductService:
         db.commit()
         db.refresh(product)
 
+    # Audit log
         AuditService.create_log(
             current_user["user_id"],
             "UPDATE",
-            "PRODUCT",
-            product.id,
+            f"Product ID {product.id} updated",
             db
         )
 
@@ -85,8 +103,6 @@ class ProductService:
             "message": "Product updated successfully",
             "product": product.to_dict()
         }
-
-
     @staticmethod
     def delete_product(product_id, current_user, db):
         product = db.query(Product).filter(Product.id == product_id).first()

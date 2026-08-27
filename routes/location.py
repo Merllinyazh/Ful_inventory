@@ -54,7 +54,12 @@ def update_location(
     db: Session = Depends(get_db),
     current_user: dict = Depends(admin_required)
 ):
-    return LocationService.update_location(location_id, data, db)
+    return LocationService.update_location(
+        location_id,
+        data,
+        current_user,
+        db
+    )
 
 
 @router.delete("/{location_id}")
@@ -63,4 +68,8 @@ def delete_location(
     db: Session = Depends(get_db),
     current_user: dict = Depends(admin_required)
 ):
-    return LocationService.delete_location(location_id, db)
+    return LocationService.delete_location(
+    location_id,
+    current_user,
+    db
+)

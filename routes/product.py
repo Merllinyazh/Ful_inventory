@@ -49,7 +49,12 @@ def update_product(
     db: Session = Depends(get_db),
     current_user: dict = Depends(admin_required)
 ):
-    return ProductService.update_product(product_id, data, db)
+    return ProductService.update_product(
+        product_id,
+        data,
+        current_user,
+        db
+    )
 
 
 @router.delete("/{product_id}")
@@ -58,4 +63,8 @@ def delete_product(
     db: Session = Depends(get_db),
     current_user: dict = Depends(admin_required)
 ):
-    return ProductService.delete_product(product_id, db)
+    return ProductService.delete_product(
+        product_id,
+        current_user,
+        db
+    )
