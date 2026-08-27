@@ -1,6 +1,9 @@
-Flask
-Flask-SQLAlchemy
+fastapi
+uvicorn
+sqlalchemy
 psycopg2-binary
 PyJWT
 python-dotenv
-flasgger
+pytest
+httpx2
+pydantic
