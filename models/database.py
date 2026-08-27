@@ -69,3 +69,19 @@ class Movement(Base):
             "user_id": self.user_id,
             "created_at": self.created_at
         }
+
+class Stock(Base):
+    __tablename__ = "stocks"
+
+    id = Column(Integer, primary_key=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=False)
+    quantity = Column(Integer, default=0, nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "product_id": self.product_id,
+            "location_id": self.location_id,
+            "quantity": self.quantity
+        }
