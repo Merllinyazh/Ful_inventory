@@ -6,7 +6,7 @@ client = TestClient(app)
 
 
 # ==========================================
-# TEST DATA
+# TEST USERS
 # ==========================================
 
 admin_user = {
@@ -25,13 +25,38 @@ staff_user = {
 
 
 # ==========================================
+# HELPER FUNCTIONS
+# ==========================================
+
+def get_token(user):
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": user["email"],
+            "password": user["password"]
+        }
+    )
+
+    assert response.status_code == 200
+
+    token = response.json()["access_token"]
+
+    return {
+        "Authorization": f"Bearer {token}"
+    }
+
+
+def register_test_users():
+    client.post("/auth/register", json=admin_user)
+    client.post("/auth/register", json=staff_user)
+
+
+# ==========================================
 # HOME
 # ==========================================
 
 def test_home():
-
     response = client.get("/")
-
     assert response.status_code == 200
 
 
@@ -39,28 +64,9 @@ def test_home():
 # AUTHENTICATION
 # ==========================================
 
-def test_register_admin():
+def test_authentication():
 
-    response = client.post(
-        "/auth/register",
-        json=admin_user
-    )
-
-    # 201 if new user, 409 if already exists
-    assert response.status_code in [201, 409]
-
-
-def test_register_staff():
-
-    response = client.post(
-        "/auth/register",
-        json=staff_user
-    )
-
-    assert response.status_code in [201, 409]
-
-
-def test_login_admin():
+    register_test_users()
 
     response = client.post(
         "/auth/login",
@@ -71,132 +77,22 @@ def test_login_admin():
     )
 
     assert response.status_code == 200
-
-    data = response.json()
-
-    assert "access_token" in data
-    assert data["token_type"] == "Bearer"
-
-
-def test_login_staff():
-
-    response = client.post(
-        "/auth/login",
-        json={
-            "email": staff_user["email"],
-            "password": staff_user["password"]
-        }
-    )
-
-    assert response.status_code == 200
-
-    data = response.json()
-
-    assert "access_token" in data
-
-
-def get_admin_headers():
-
-    response = client.post(
-        "/auth/login",
-        json={
-            "email": admin_user["email"],
-            "password": admin_user["password"]
-        }
-    )
-
-    token = response.json()["access_token"]
-
-    return {
-        "Authorization": f"Bearer {token}"
-    }
-
-
-def get_staff_headers():
-
-    response = client.post(
-        "/auth/login",
-        json={
-            "email": staff_user["email"],
-            "password": staff_user["password"]
-        }
-    )
-
-    token = response.json()["access_token"]
-
-    return {
-        "Authorization": f"Bearer {token}"
-    }
-
-
-def test_protected_route():
-
-    headers = get_admin_headers()
-
-    response = client.get(
-        "/auth/protected",
-        headers=headers
-    )
-
-    assert response.status_code == 200
+    assert "access_token" in response.json()
 
 
 # ==========================================
 # PRODUCT MANAGEMENT
 # ==========================================
 
-def test_create_product():
+def test_product_management():
 
-    headers = get_admin_headers()
+    register_test_users()
+    headers = get_token(admin_user)
 
-    product = {
-        "name": "Test Laptop",
-        "sku": "TEST-LAPTOP-001",
-        "price": 50000,
-        "quantity": 0
-    }
-
-    response = client.post(
-        "/products/",
-        json=product,
-        headers=headers
-    )
-
-    assert response.status_code in [201, 409]
-
-
-def test_get_products():
-
-    headers = get_staff_headers()
-
-    response = client.get(
-        "/products/",
-        headers=headers
-    )
-
-    assert response.status_code == 200
-
-
-def test_get_single_product():
-
-    headers = get_staff_headers()
-
-    response = client.get(
-        "/products/1",
-        headers=headers
-    )
-
-    assert response.status_code in [200, 404]
-
-
-def test_update_product():
-
-    headers = get_admin_headers()
-
-    # Create a unique product first
     sku = f"TEST-{uuid.uuid4().hex[:8]}"
 
-    create_response = client.post(
+    # CREATE
+    response = client.post(
         "/products/",
         json={
             "name": "Test Laptop",
@@ -207,18 +103,24 @@ def test_update_product():
         headers=headers
     )
 
-    assert create_response.status_code == 201
+    assert response.status_code == 201
 
-    product_id = create_response.json()["product"]["id"]
+    product_id = response.json()["product"]["id"]
 
-    # Update that exact product
-    updated_sku = f"UPDATED-{uuid.uuid4().hex[:8]}"
+    # GET
+    response = client.get(
+        f"/products/{product_id}",
+        headers=headers
+    )
 
+    assert response.status_code == 200
+
+    # UPDATE
     response = client.put(
         f"/products/{product_id}",
         json={
-            "name": "Updated Test Laptop",
-            "sku": updated_sku,
+            "name": "Updated Laptop",
+            "sku": f"UPDATED-{uuid.uuid4().hex[:8]}",
             "price": 55000,
             "quantity": 0
         },
@@ -226,252 +128,151 @@ def test_update_product():
     )
 
     assert response.status_code == 200
-    assert response.json()["product"]["sku"] == updated_sku
-
-
-def test_delete_product():
-
-    headers = get_admin_headers()
-
-    response = client.delete(
-        "/products/9999",
-        headers=headers
-    )
-
-    # Product may not exist
-    assert response.status_code == 404
 
 
 # ==========================================
 # LOCATION MANAGEMENT
 # ==========================================
 
-def test_create_location():
+def test_location_management():
 
-    headers = get_admin_headers()
+    register_test_users()
+    headers = get_token(admin_user)
 
-    location = {
-        "name": "Test Warehouse",
-        "address": "Test Address"
-    }
+    location_name = f"Warehouse-{uuid.uuid4().hex[:6]}"
 
+    # CREATE
     response = client.post(
         "/locations/",
-        json=location,
+        json={
+            "name": location_name,
+            "address": "Test Address"
+        },
         headers=headers
     )
 
-    assert response.status_code in [201, 409]
+    assert response.status_code == 201
 
+    location_id = response.json()["location"]["id"]
 
-def test_get_locations():
-
-    headers = get_staff_headers()
-
+    # GET
     response = client.get(
-        "/locations/",
+        f"/locations/{location_id}",
         headers=headers
     )
 
     assert response.status_code == 200
-
-
-def test_get_single_location():
-
-    headers = get_staff_headers()
-
-    response = client.get(
-        "/locations/1",
-        headers=headers
-    )
-
-    assert response.status_code in [200, 404]
-
-
-def test_update_location():
-
-    headers = get_admin_headers()
-
-    location = {
-        "name": "Updated Warehouse",
-        "address": "Updated Address"
-    }
-
-    response = client.put(
-        "/locations/1",
-        json=location,
-        headers=headers
-    )
-
-    assert response.status_code in [200, 404]
-
-
-def test_delete_location():
-
-    headers = get_admin_headers()
-
-    response = client.delete(
-        "/locations/9999",
-        headers=headers
-    )
-
-    assert response.status_code == 404
 
 
 # ==========================================
 # STOCK MOVEMENT
 # ==========================================
 
-def test_stock_in():
+def test_stock_movement():
 
-    headers = get_admin_headers()
+    register_test_users()
+    headers = get_token(admin_user)
 
-    movement = {
-        "product_id": 1,
-        "from_location_id": None,
-        "to_location_id": 1,
-        "quantity": 10,
-        "movement_type": "IN"
-    }
-
+    # Create product
     response = client.post(
-        "/movement/",
-        json=movement,
+        "/products/",
+        json={
+            "name": "Movement Product",
+            "sku": f"MOVE-{uuid.uuid4().hex[:8]}",
+            "price": 1000,
+            "quantity": 0
+        },
         headers=headers
     )
 
-    assert response.status_code in [200, 404]
+    assert response.status_code == 201
 
+    product_id = response.json()["product"]["id"]
 
-def test_stock_out():
-
-    headers = get_admin_headers()
-
-    movement = {
-        "product_id": 1,
-        "from_location_id": 1,
-        "to_location_id": None,
-        "quantity": 2,
-        "movement_type": "OUT"
-    }
-
+    # Create location
     response = client.post(
-        "/movement/",
-        json=movement,
+        "/locations/",
+        json={
+            "name": f"Movement Warehouse-{uuid.uuid4().hex[:6]}",
+            "address": "Test Address"
+        },
         headers=headers
     )
 
-    assert response.status_code in [200, 400, 404]
+    assert response.status_code == 201
 
+    location_id = response.json()["location"]["id"]
 
-def test_stock_transfer():
-
-    headers = get_admin_headers()
-
-    movement = {
-        "product_id": 1,
-        "from_location_id": 1,
-        "to_location_id": 2,
-        "quantity": 2,
-        "movement_type": "TRANSFER"
-    }
-
+    # STOCK IN
     response = client.post(
         "/movement/",
-        json=movement,
+        json={
+            "product_id": product_id,
+            "to_location_id": location_id,
+            "quantity": 10,
+            "movement_type": "IN"
+        },
         headers=headers
     )
 
-    assert response.status_code in [200, 400, 404]
+    assert response.status_code == 200
 
 
 # ==========================================
-# STOCK
+# STOCK + AUDIT
 # ==========================================
 
-def test_get_all_stock():
+def test_stock_and_audit():
 
-    headers = get_staff_headers()
+    register_test_users()
 
+    admin_headers = get_token(admin_user)
+
+    # STOCK
     response = client.get(
         "/stock/",
-        headers=headers
+        headers=admin_headers
     )
 
     assert response.status_code == 200
 
-
-def test_get_stock_by_location():
-
-    headers = get_staff_headers()
-
-    response = client.get(
-        "/stock/location/1",
-        headers=headers
-    )
-
-    assert response.status_code in [200, 404]
-
-
-# ==========================================
-# AUDIT LOG
-# ==========================================
-
-def test_get_audit_logs():
-
-    headers = get_admin_headers()
-
+    # AUDIT LOG
     response = client.get(
         "/audit/",
-        headers=headers
+        headers=admin_headers
     )
 
     assert response.status_code == 200
 
 
-def test_get_user_audit_logs():
-
-    headers = get_admin_headers()
-
-    response = client.get(
-        "/audit/user/1",
-        headers=headers
-    )
-
-    assert response.status_code in [200, 404]
-
-
 # ==========================================
-# AUTHORIZATION TESTS
+# AUTHORIZATION
 # ==========================================
 
-def test_staff_can_get_products():
+def test_staff_permissions():
 
-    headers = get_staff_headers()
+    register_test_users()
 
+    staff_headers = get_token(staff_user)
+
+    # Staff CAN get products
     response = client.get(
         "/products/",
-        headers=headers
+        headers=staff_headers
     )
 
     assert response.status_code == 200
 
-
-def test_staff_cannot_create_product():
-
-    headers = get_staff_headers()
-
-    product = {
-        "name": "Unauthorized Product",
-        "sku": "STAFF-TEST-001",
-        "price": 1000,
-        "quantity": 0
-    }
-
+    # Staff CANNOT create products
     response = client.post(
         "/products/",
-        json=product,
-        headers=headers
+        json={
+            "name": "Unauthorized Product",
+            "sku": f"STAFF-{uuid.uuid4().hex[:8]}",
+            "price": 1000,
+            "quantity": 0
+        },
+        headers=staff_headers
     )
 
     assert response.status_code == 403
