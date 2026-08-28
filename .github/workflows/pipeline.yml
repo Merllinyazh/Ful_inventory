@@ -54,3 +54,20 @@ jobs:
 
         run: |
           pytest test.py -v
+
+# =========================
+  # CD - DEPLOY TO RENDER
+  # =========================
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+
+    # Deploy only when code is pushed to master
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+
+    steps:
+
+      - name: Deploy to Render
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
